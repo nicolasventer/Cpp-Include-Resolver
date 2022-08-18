@@ -106,7 +106,9 @@ namespace include_resolver
 } // namespace include_resolver
 ```
 
-*Rest:*
+<details>
+  <summary><b>Show rest</b></summary>
+ 
 ```cpp
 // small wrapper class for pretty display of path with slash instead of backslash
 class PrettyPath : public std::filesystem::path
@@ -175,6 +177,7 @@ namespace std
 	};
 } // namespace std
 ```
+</details>
 
 ## Executable Usage
 
