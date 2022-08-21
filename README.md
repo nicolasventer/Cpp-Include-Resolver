@@ -11,6 +11,13 @@ IncludeResolver can also be used as an **executable configurable via the command
 In order to find the file [example/incl/A.h](example/incl/A.h), g++ need to but executed with the argument `-Iexample/incl`.  
 So the Include Resolver will prompt the folder `example/incl`.
 
+# Features
+
+- retrieve the folders to include
+- detect the conflicts
+- store unresolved includes
+- write the output result in a file *(main)*
+
 # Installation
 
 Include the file [`IncludeResolver.hpp`](IncludeResolver.hpp) in your project  
