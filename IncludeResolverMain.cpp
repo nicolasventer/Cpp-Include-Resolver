@@ -184,7 +184,7 @@ int main(int argc, const char* argv[])
 	if (result.conflictedIncludeMap.empty()) *os << "No conflicted include" << std::endl;
 	else
 	{
-		*os << result.conflictedIncludeMap.size() << " unresolved includes:" << std::endl;
+		*os << result.conflictedIncludeMap.size() << " conflicted includes:" << std::endl;
 		for (const auto& [include, conflictedInclude] : result.conflictedIncludeMap)
 			*os << include.string() << ":\n" << conflictedInclude << std::endl;
 	}
