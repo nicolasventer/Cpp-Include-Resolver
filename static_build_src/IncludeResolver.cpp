@@ -238,7 +238,7 @@ namespace include_resolver
 
 	namespace example
 	{
-		void displayParseStatus(size_t current, size_t total, const PrettyPath& filePath)
+		void displayParseStatus(PARSE_STATUS_PARAM)
 		{
 			std::cout << "[" << current << "/" << total << "] " << filePath << std::endl;
 		}

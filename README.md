@@ -96,10 +96,13 @@ struct IncludeResolverResult
 	std::set<PrettyPath> resolveIncludeFolderSet;
 };
 
+#define PARSE_STATUS_PARAM size_t current, size_t total, const PrettyPath& filePath
+// parameters are captures
+#define PARSE_STATUS_LAMBDA(...) [__VA_ARGS__](PARSE_STATUS_PARAM)
+using ParseStatusCallback = std::function<void(PARSE_STATUS_PARAM)>;
+
 namespace include_resolver
 {
-	using ParseStatusCallback = std::function<void(size_t current, size_t total, const PrettyPath& filePath)>;
-
 	// compute all folders to include in order to resolve all includes
 	static IncludeResolverResult computeIncludeResolve(
 		const IncludeResolverSettings& settings,
@@ -108,7 +111,7 @@ namespace include_resolver
 	namespace example
 	{
 		// example of parse status callback that displays the parse status
-		static void displayParseStatus(size_t current, size_t total, const PrettyPath& filePath);
+		static void displayParseStatus(PARSE_STATUS_PARAM);
 	} // namespace example
 } // namespace include_resolver
 ```
