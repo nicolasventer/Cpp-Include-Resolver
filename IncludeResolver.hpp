@@ -256,7 +256,7 @@ namespace include_resolver
 				auto endPos = substr.find_first_of("\">", startPos + 1);
 				std::string include = static_cast<std::string>(substr.substr(startPos + 1, endPos - startPos - 1));
 
-				const std::filesystem::path& includePath = cppFileToParse.parent_path() / std::filesystem::path(include);
+				std::filesystem::path includePath = cppFileToParse.parent_path() / std::filesystem::path(include);
 
 				static auto addToParse = [&cppFileToParseSet, &cppFileToParseList](const std::filesystem::path& includePath)
 				{
