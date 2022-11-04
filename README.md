@@ -2,9 +2,9 @@
 
 # Description
 
-IncludeResolver is a **single header c++ library** that allows you to **compute all folders to add to `includePath`** in order to resolve all includes.
+IncludeResolver is an **executable** that allows you to **compute all folders to add to `includePath`** in order to resolve all includes.
 
-IncludeResolver can also be used as an **executable configurable via the command line arguments**.
+IncludeResolver can also be used as an **dll**.
 
 **Explanation `includePath` by example:**  
 [example/src/A.cpp](example/src/A.cpp) contains	 `#include "A.h"`.  
@@ -16,192 +16,79 @@ So the Include Resolver will prompt the folder `example/incl`.
 - retrieve the folders to include
 - detect the conflicts
 - store unresolved includes
-- write the output result in a file *(main)*
+- write the output result in a file (json format)
+
+# Dependencies
+
+- [json11](https://github.com/dropbox/json11) (included in the project)
 
 # Installation
 
-Include the file [`IncludeResolver.hpp`](IncludeResolver.hpp) in your project  
-*or*  
-Compile the [IncludeResolverMain.cpp](IncludeResolverMain.cpp) with the command `g++ IncludeResolverMain.cpp -o IncludeResolverMain.exe -std=c++17`.
+Build executable:
 
-c++17 or later compilation required.  
-No external dependencies.
+```bash
+g++ -o IncludeResolver.exe main.cpp IncludeResolver.cpp libs/json11/json11.cpp
+```
+
+Build dll:
+
+```bash
+g++ -shared -fPIC -o IncludeResolver.dll main.cpp IncludeResolver.cpp libs/json11/json11.cpp
+```
+
+c++17 or later compilation required. *(it can be specified with the flag `-std=c++17`)*
 
 # Example
 
-*Content of [exampleMain.cpp](exampleMain.cpp):*
-
-```cpp
-#include <iostream>
-
-#include "IncludeResolver.hpp"
-
-int main()
-{
-	IncludeResolverSettings settings;
-	settings.includeFolderList.push_back(
-		R"(C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\include)");
-	settings.toParseFolderList.push_back("example");
-	settings.resolveFolderList.push_back(".");
-
-	IncludeResolverResult result = include_resolver::computeIncludeResolve(settings, include_resolver::displayParseStatus);
-
-	std::cout << "unresolvedIncludeSet: " << std::endl;
-	for (const auto& unresolvedInclude : result.unresolvedIncludeSet) std::cout << unresolvedInclude << std::endl;
-
-	std::cout << "resolveIncludeFolderSet: " << std::endl;
-	for (const auto& resolveIncludeFolder : result.resolveIncludeFolderSet) std::cout << resolveIncludeFolder << std::endl;
-
-	return 0;
-}
-```
-
-The simple main above is pretty equivalent to the command line below:
-```shell
-> IncludeResolver.exe --toParse "example" --include "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\include" --resolve "."
+```bash
+IncludeResolver.exe --toParse example --resolve example --include "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.33.31629\include"
 ```
 
 Output:
 ```
-[1/2] example/incl/A.h
-[2/2] example/src/A.cpp
-[3/3] ./example/incl/A.h
-
-unresolvedIncludeSet:
-example/src/A.cpp:2 : B.h
-
-resolveIncludeFolderSet:
-./example/incl
-C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/include
+{"conflictedIncludes": [{"canBeResolvedBy": ["D:/Projets/C++/Cpp-Include-Resolver-main/example/incl", "D:/Projets/C++/Cpp-Include-Resolver-main/example/incl/C"], "include": "C.h", "includedBy": [{"filePath": "D:/Projets/C++/Cpp-Include-Resolver-main/example/src/A.cpp", "line": "3"}]}], "invalidPaths": [], "resolveIncludeFolders": ["C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.33.31629/include", "D:/Projets/C++/Cpp-Include-Resolver-main/example/incl"], "unresolvedIncludes": [{"filePath": "D:/Projets/C++/Cpp-Include-Resolver-main/example/src/A.cpp", "include": "B.h", "line": "2"}]}
 ```
 
-[Bigger example of output](out.txt)
+<!-- TODO: remove this example ? -->
+[Bigger example of output with UE5](out.json)  
+*Result of the parse and resolve of `UnrealEngine-5.0.3-release/Engine/Source/Editor`  
+Executed command: `IncludeResolver.exe --toParse . --resolve . --include "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.33.31629\include" --output out.json --verbose`*
 
 # Usage
 
-## Library Usage
-
-*Most important:*
-```cpp
-struct IncludeResolverResult
-{
-	// set of invalid paths from Settings
-	std::set<std::filesystem::path> invalidPathSet;
-	// set of unresolved includes
-	std::set<UnresolvedInclude> unresolvedIncludeSet;
-	// map of conflicted includes
-	// key: text describing the include, value: reference of the include
-	std::multimap<std::filesystem::path, ConflictedInclude> conflictedIncludeMap;
-	// set of folders to include in order to resolve all includes
-	std::set<PrettyPath> resolveIncludeFolderSet;
-};
-
-#define PARSE_STATUS_PARAM size_t current, size_t total, const PrettyPath& filePath
-// parameters are captures
-#define PARSE_STATUS_LAMBDA(...) [__VA_ARGS__](PARSE_STATUS_PARAM)
-using ParseStatusCallback = std::function<void(PARSE_STATUS_PARAM)>;
-
-namespace include_resolver
-{
-	// compute all folders to include in order to resolve all includes
-	static IncludeResolverResult computeIncludeResolve(
-		const IncludeResolverSettings& settings,
-		ParseStatusCallback parseStatusCallback = [](size_t, size_t, const PrettyPath&) {});
-
-	namespace example
-	{
-		// example of parse status callback that displays the parse status
-		static void displayParseStatus(PARSE_STATUS_PARAM);
-	} // namespace example
-} // namespace include_resolver
-```
-
-<details>
-  <summary><b>Show rest</b></summary>
- 
-```cpp
-// small wrapper class for pretty display of path with slash instead of backslash
-class PrettyPath : public std::filesystem::path
-{
-	using parent_type = std::filesystem::path;
-	using parent_type::parent_type;
-
-public:
-	std::string prettyString() const;
-	friend std::ostream& operator<<(std::ostream& os, const PrettyPath& prettyPath);
-};
-
-struct IncludeResolverSettings
-{
-	// list of folders to parse
-	std::vector<std::filesystem::path> toParseFolderList;
-	// set of folders to include in order to help resolve includes
-	std::vector<std::filesystem::path> includeFolderList;
-	// list of folders that can be used in order to resolve includes
-	std::vector<std::filesystem::path> resolveFolderList;
-};
-
-struct IncludeLocation
-{
-	// file where include was unresolved
-	PrettyPath filePath;
-	// line of the include
-	uint32_t line;
-
-	friend bool operator<(const IncludeLocation& lhs, const IncludeLocation& rhs);
-
-	// can be used to display include location
-	friend std::ostream& operator<<(std::ostream& os, const IncludeLocation& unresolvedInclude);
-};
-
-// include that have not been resolved
-struct UnresolvedInclude : public IncludeLocation
-{
-	// text describing the include
-	std::string include;
-
-	friend bool operator<(const UnresolvedInclude& lhs, const UnresolvedInclude& rhs);
-
-	// can be used to display unresolved include
-	friend std::ostream& operator<<(std::ostream& os, const UnresolvedInclude& unresolvedInclude);
-};
-
-// include that can be resolve in several ways
-struct ConflictedInclude
-{
-	// set of locations where the include is done
-	std::set<IncludeLocation> includeLocationSet;
-
-	// set of folders that can all resolve the include
-	std::set<PrettyPath> resolveIncludeFolderSet;
-
-	// can be used to display conflicted include
-	friend std::ostream& operator<<(std::ostream& os, const ConflictedInclude& conflictedInclude);
-};
-
-namespace std
-{
-	template <> struct hash<std::filesystem::path>
-	{
-		std::size_t operator()(const std::filesystem::path& path) const;
-	};
-} // namespace std
-```
-</details>
-
 ## Executable Usage
 
+Usage:
+
 ```
-Usage :
 IncludeResolver.exe [Settings...]
-  Settings :
-    --toParse [toParseFolder...] : list of folders to parse
-    --include [includeFolder...] : list of folders used as include
-    --resolve [resolveFolder...] : list of folders used to resolve includes
-    --output [outputFile] : set the outputFile
-  Other :
-    --file [filePath...] : append the content of all files as arguments of the command line
-    --verbose : enable the log
+  Settings:
+    --toParse/-p [toParseFolder...] : list of folders to parse
+    --include/-i [includeFolder...] : list of folders used as include
+    --resolve/-r [resolveFolder...] : list of folders used to resolve includes
+    --output/-o [outputFile] : set the outputFile
+  Other:
+    --file/-f [filePath...] : append the content of all files as arguments of the command line
+    --verbose/-v : enable the log
+    --help/-h : display the help
+    --help-result/-hr : display the json format of the result
+```
+
+ResolverResult json:
+
+```js
+{
+	"invalidPaths": string[],
+	"unresolvedIncludes": { "filePath": string, "line": number, "include": string }[],
+	"conflictedIncludes": { "include": string, "includedBy": { "filePath": string, "line": number }[], "canBeResolvedBy": string[] }[],
+	"resolveIncludeFolders": string[]
+}
+```
+## Library Usage
+
+```cpp
+// same as the executable
+extern "C" __declspec(dllexport) int includeResolverMain(int argc, const char* argv[]);
 ```
 
 # Licence
