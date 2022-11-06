@@ -33,7 +33,7 @@ g++ -o IncludeResolver.exe main.cpp IncludeResolver.cpp libs/json11/json11.cpp
 Build dll:
 
 ```bash
-g++ -shared -fPIC -o IncludeResolver.dll main.cpp IncludeResolver.cpp libs/json11/json11.cpp
+g++ -shared -fPIC -o IncludeResolver.dll IncludeResolver.cpp libs/json11/json11.cpp
 ```
 
 c++17 or later compilation required. *(it can be specified with the flag `-std=c++17`)*
@@ -88,7 +88,7 @@ ResolverResult json:
 
 ```cpp
 // same as the executable
-extern "C" __declspec(dllexport) int includeResolverMain(int argc, const char* argv[]);
+extern "C" __declspec(dllexport) int include_resolver_main(int argc, const char* argv[]);
 ```
 
 # Licence

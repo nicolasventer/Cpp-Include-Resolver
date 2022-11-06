@@ -2,4 +2,4 @@
 
 #include "IncludeResolver.h"
 
-int main(int argc, const char* argv[]) { return includeResolverMain(argc, argv); }
+int main(int argc, const char* argv[]) { return include_resolver_main(argc, argv); }

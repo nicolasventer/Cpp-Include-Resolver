@@ -26,4 +26,4 @@ ResolverResult json:
 */
 
 // same as the executable
-extern "C" __declspec(dllexport) int includeResolverMain(int argc, const char* argv[]);
+extern "C" __declspec(dllexport) int include_resolver_main(int argc, const char* argv[]);

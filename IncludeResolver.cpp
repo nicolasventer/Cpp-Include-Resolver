@@ -542,7 +542,7 @@ Json::object includeResolverResultToJsonObj(const IncludeResolverResult& include
 		{"resolveIncludeFolders", resolveIncludeFolderArray}};
 }
 
-int includeResolverMain(int argc, const char* argv[])
+int include_resolver_main(int argc, const char* argv[])
 {
 	std::vector<std::string> argList;
 	for (int i = 0; i < argc; ++i) argList.push_back(argv[i]);
