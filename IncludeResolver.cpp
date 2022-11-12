@@ -1,7 +1,5 @@
 // Copyright (c) Nicolas VENTER All rights reserved.
 
-#include "IncludeResolver.h"
-
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -14,6 +12,32 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+/*
+Usage:
+IncludeResolver.exe [Settings...]
+  Settings:
+	--toParse/-p [toParseFolder...] : list of folders to parse
+	--include/-i [includeFolder...] : list of folders used as include
+	--resolve/-r [resolveFolder...] : list of folders used to resolve includes
+	--output/-o [outputFile] : set the outputFile
+  Other:
+	--file/-f [filePath...] : append the content of all files as arguments of the command line
+	--verbose/-v : enable the log
+	--help/-h : display the help
+	--help-result/-hr : display the json format of the result
+
+ResolverResult json:
+{
+	"invalidPaths": string[],
+	"unresolvedIncludes": { "filePath": string, "line": number, "include": string }[],
+	"conflictedIncludes": { "include": string, "includedBy": { "filePath": string, "line": number }[], "canBeResolvedBy": string[]
+}[], "resolveIncludeFolders": string[]
+}
+*/
+
+// same as main
+extern "C" __declspec(dllexport) int include_resolver_main(int argc, const char* argv[]);
 
 // small wrapper class for pretty display of path with slash instead of backslash
 class PrettyPath : public std::filesystem::path
@@ -585,3 +609,7 @@ int include_resolver_main(int argc, const char* argv[])
 
 	return 0;
 }
+
+#ifndef NO_MAIN
+int main(int argc, const char* argv[]) { return include_resolver_main(argc, argv); }
+#endif

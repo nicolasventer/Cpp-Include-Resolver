@@ -4,7 +4,7 @@
 
 IncludeResolver is an **executable** that allows you to **compute all folders to add to `includePath`** in order to resolve all includes.
 
-IncludeResolver can also be used as an **dll**.
+IncludeResolver can also be used as an **dll**, (see [build.bat](build.bat) and [test_include_resolver.py](test_include_resolver.py) for detailed example).
 
 **Explanation `includePath` by example:**  
 [example/src/A.cpp](example/src/A.cpp) contains	 `#include "A.h"`.  
@@ -30,12 +30,6 @@ Build executable:
 g++ -o IncludeResolver.exe main.cpp IncludeResolver.cpp libs/json11/json11.cpp
 ```
 
-Build dll:
-
-```bash
-g++ -shared -fPIC -o IncludeResolver.dll IncludeResolver.cpp libs/json11/json11.cpp
-```
-
 c++17 or later compilation required. *(it can be specified with the flag `-std=c++17`)*
 
 # Example
@@ -55,8 +49,6 @@ Output:
 Executed command: `IncludeResolver.exe --toParse . --resolve . --include "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.33.31629\include" --output out.json --verbose`*
 
 # Usage
-
-## Executable Usage
 
 Usage:
 
@@ -83,12 +75,6 @@ ResolverResult json:
 	"conflictedIncludes": { "include": string, "includedBy": { "filePath": string, "line": number }[], "canBeResolvedBy": string[] }[],
 	"resolveIncludeFolders": string[]
 }
-```
-## Library Usage
-
-```cpp
-// same as the executable
-extern "C" __declspec(dllexport) int include_resolver_main(int argc, const char* argv[]);
 ```
 
 # Licence
