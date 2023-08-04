@@ -16,18 +16,16 @@ So the Include Resolver will prompt the folder `example/incl`.
 - retrieve the folders to include
 - detect the conflicts
 - store unresolved includes
-- write the output result in a file (json format)
-
-# Dependencies
-
-- [json11](https://github.com/dropbox/json11) (included in the project)
+- write the output result in a file (yaml format)
 
 # Installation
+
+No external dependencies.
 
 Build executable:
 
 ```bash
-g++ -o IncludeResolver.exe main.cpp IncludeResolver.cpp libs/json11/json11.cpp
+g++ -o IncludeResolver.exe main.cpp IncludeResolver.cpp
 ```
 
 c++17 or later compilation required. *(it can be specified with the flag `-std=c++17`)*
@@ -39,14 +37,25 @@ IncludeResolver.exe --toParse example --resolve example --include "C:\Program Fi
 ```
 
 Output:
-```
-{"conflictedIncludes": [{"canBeResolvedBy": ["D:/Projets/C++/Cpp-Include-Resolver-main/example/incl", "D:/Projets/C++/Cpp-Include-Resolver-main/example/incl/C"], "include": "C.h", "includedBy": [{"filePath": "D:/Projets/C++/Cpp-Include-Resolver-main/example/src/A.cpp", "line": "3"}]}], "invalidPaths": [], "resolveIncludeFolders": ["C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.33.31629/include", "D:/Projets/C++/Cpp-Include-Resolver-main/example/incl"], "unresolvedIncludes": [{"filePath": "D:/Projets/C++/Cpp-Include-Resolver-main/example/src/A.cpp", "include": "B.h", "line": "2"}]}
+```yaml
+invalidPaths:
+unresolvedIncludes:
+    D:/Projets/Cpp-Include-Resolver/example/src/A.cpp:2 : B.h
+conflictedIncludes:
+    C.h:
+        includedBy:
+            - D:/Projets/Cpp-Include-Resolver/example/src/A.cpp:3
+        canBeResolvedBy:
+            - D:/Projets/Cpp-Include-Resolver/example/incl
+            - D:/Projets/Cpp-Include-Resolver/example/incl/C
+resolveIncludeFolders:
+    - C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.33.31629/include
+    - D:/Projets/Cpp-Include-Resolver/example/incl
 ```
 
-<!-- TODO: remove this example ? -->
-[Bigger example of output with UE5](out.json)  
-*Result of the parse and resolve of `UnrealEngine-5.0.3-release/Engine/Source/Editor`  
-Executed command: `IncludeResolver.exe --toParse . --resolve . --include "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.33.31629\include" --output out.json --verbose`*
+[Bigger example of output with UE5](out.yaml)  
+*Result of the parse and resolve of `C:\Program Files\Epic Games\UE_5.1\Engine\Source\Editor`  
+Executed command: `IncludeResolver.exe --toParse . --resolve . --include "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.33.31629\include" --output out.yaml --verbose`*
 
 # Usage
 
@@ -63,16 +72,16 @@ IncludeResolver.exe [Settings...]
     --file/-f [filePath...] : append the content of all files as arguments of the command line
     --verbose/-v : enable the log
     --help/-h : display the help
-    --help-result/-hr : display the json format of the result
+    --help-result/-hr : display the yaml format of the result
 ```
 
-ResolverResult json:
+ResolverResult yaml:
 
 ```js
 {
 	"invalidPaths": string[],
-	"unresolvedIncludes": { "filePath": string, "line": number, "include": string }[],
-	"conflictedIncludes": { "include": string, "includedBy": { "filePath": string, "line": number }[], "canBeResolvedBy": string[] }[],
+	"unresolvedIncludes": Object{ ["filePath": string]: string },
+	"conflictedIncludes": Object{ ["include": string]: { "includedBy": string[], "canBeResolvedBy": string[] } },
 	"resolveIncludeFolders": string[]
 }
 ```

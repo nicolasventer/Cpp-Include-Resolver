@@ -25,14 +25,14 @@ IncludeResolver.exe [Settings...]
 	--file/-f [filePath...] : append the content of all files as arguments of the command line
 	--verbose/-v : enable the log
 	--help/-h : display the help
-	--help-result/-hr : display the json format of the result
+	--help-result/-hr : display the yaml format of the result
 
-ResolverResult json:
+ResolverResult yaml:
 {
 	"invalidPaths": string[],
-	"unresolvedIncludes": { "filePath": string, "line": number, "include": string }[],
-	"conflictedIncludes": { "include": string, "includedBy": { "filePath": string, "line": number }[], "canBeResolvedBy": string[]
-}[], "resolveIncludeFolders": string[]
+	"unresolvedIncludes": Object{ ["filePath": string]: string },
+	"conflictedIncludes": Object{ ["include": string]: { "includedBy": string[], "canBeResolvedBy": string[] } },
+	"resolveIncludeFolders": string[]
 }
 */
 
@@ -53,11 +53,11 @@ public:
 struct IncludeResolverSettings
 {
 	// list of folders to parse
-	std::vector<std::filesystem::path> toParseFolderList;
+	std::vector<PrettyPath> toParseFolderList;
 	// set of folders to include in order to help resolve includes
-	std::vector<std::filesystem::path> includeFolderList;
+	std::vector<PrettyPath> includeFolderList;
 	// list of folders that can be used in order to resolve includes
-	std::vector<std::filesystem::path> resolveFolderList;
+	std::vector<PrettyPath> resolveFolderList;
 };
 
 struct IncludeLocation
@@ -101,14 +101,17 @@ struct ConflictedInclude
 struct IncludeResolverResult
 {
 	// set of invalid paths from Settings
-	std::set<std::filesystem::path> invalidPathSet;
+	std::set<PrettyPath> invalidPathSet;
 	// set of unresolved includes
 	std::set<UnresolvedInclude> unresolvedIncludeSet;
 	// map of conflicted includes
 	// key: text describing the include, value: reference of the include
-	std::map<std::filesystem::path, ConflictedInclude> conflictedIncludeMap;
+	std::map<PrettyPath, ConflictedInclude> conflictedIncludeMap;
 	// set of folders to include in order to resolve all includes
 	std::set<PrettyPath> resolveIncludeFolderSet;
+
+	// can be used to display the result
+	friend std::ostream& operator<<(std::ostream& os, const IncludeResolverResult& includeResolverResult);
 };
 
 #define PARSE_STATUS_PARAM size_t current, size_t total, const PrettyPath &filePath
@@ -159,13 +162,32 @@ std::ostream& operator<<(std::ostream& os, const UnresolvedInclude& unresolvedIn
 	return os << static_cast<IncludeLocation>(unresolvedInclude) << " : " << unresolvedInclude.include;
 }
 
+static const char* const TAB = "    ";
+
 std::ostream& operator<<(std::ostream& os, const ConflictedInclude& conflictedInclude)
 {
-	os << "\tincluded by:\n\t[";
-	for (const auto& includeLocation : conflictedInclude.includeLocationSet) os << "\n\t\t" << includeLocation;
-	os << "\n\t]\n\tcan be resolved by:\n\t[";
-	for (const auto& resolveIncludeFolder : conflictedInclude.resolveIncludeFolderSet) os << "\n\t\t" << resolveIncludeFolder;
-	return os << "\n\t]";
+	os << TAB << TAB << "includedBy:";
+	for (const auto& includeLocation : conflictedInclude.includeLocationSet)
+		os << "\n" << TAB << TAB << TAB << "- " << includeLocation;
+	os << "\n" << TAB << TAB << "canBeResolvedBy:";
+	for (const auto& resolveIncludeFolder : conflictedInclude.resolveIncludeFolderSet)
+		os << "\n" << TAB << TAB << TAB << "- " << resolveIncludeFolder;
+	return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const IncludeResolverResult& includeResolverResult)
+{
+	os << "invalidPaths:";
+	for (const auto& invalidPath : includeResolverResult.invalidPathSet) os << "\n" << TAB << "- " << invalidPath;
+	os << "\nunresolvedIncludes:";
+	for (const auto& unresolvedInclude : includeResolverResult.unresolvedIncludeSet) os << "\n" << TAB << unresolvedInclude;
+	os << "\nconflictedIncludes:";
+	for (const auto& conflictedInclude : includeResolverResult.conflictedIncludeMap)
+		os << "\n" << TAB << conflictedInclude.first << ":\n" << conflictedInclude.second;
+	os << "\nresolveIncludeFolders:";
+	for (const auto& resolveIncludeFolder : includeResolverResult.resolveIncludeFolderSet)
+		os << "\n" << TAB << "- " << resolveIncludeFolder;
+	return os;
 }
 
 namespace include_resolver
@@ -388,7 +410,7 @@ int usage(const std::string& argv0)
 	std::cerr << "    --file/-f [filePath...] : append the content of all files as arguments of the command line" << std::endl;
 	std::cerr << "    --verbose/-v : enable the log" << std::endl;
 	std::cerr << "    --help/-h : display the help" << std::endl;
-	std::cerr << "    --help-result/-hr : display the json format of the result" << std::endl;
+	std::cerr << "    --help-result/-hr : display the yaml format of the result" << std::endl;
 	return 1;
 }
 
@@ -487,7 +509,7 @@ int getSettings(const std::vector<std::string>& argList,
 		}
 		else if (arg == "--help-result" || arg == "-hr")
 		{
-			std::cout << "Result json format:" << std::endl;
+			std::cout << "Result yaml format:" << std::endl;
 			std::cout << "  invalidPaths: string[]" << std::endl;
 			std::cout << "  unresolvedIncludes: { \"filePath\": string, \"line\": number, \"include\": string }[]" << std::endl;
 			std::cout
@@ -505,65 +527,6 @@ int getSettings(const std::vector<std::string>& argList,
 	}
 
 	return 0;
-}
-
-#include "libs/json11/json11.hpp"
-
-using namespace json11;
-
-Json::object includeLocationToJsonObj(const IncludeLocation& unresolvedInclude)
-{
-	return Json::object{
-		{"filePath", unresolvedInclude.filePath.prettyString()}, {"line", std::to_string(unresolvedInclude.line)}};
-}
-
-Json::object unresolvedIncludeToJsonObj(const UnresolvedInclude& unresolvedInclude)
-{
-	return Json::object{{"filePath", unresolvedInclude.filePath.prettyString()},
-		{"line", std::to_string(unresolvedInclude.line)},
-		{"include", unresolvedInclude.include}};
-}
-
-Json::object conflictedIncludeToJsonObj(const std::filesystem::path& filePath, const ConflictedInclude& conflictedInclude)
-{
-	PrettyPath prettyPath(filePath);
-
-	Json::array includeLocationArray;
-	for (const auto& includeLocation : conflictedInclude.includeLocationSet)
-		includeLocationArray.push_back(includeLocationToJsonObj(includeLocation));
-
-	Json::array resolveIncludeFolderArray;
-	for (const auto& resolveIncludeFolder : conflictedInclude.resolveIncludeFolderSet)
-		resolveIncludeFolderArray.push_back(resolveIncludeFolder.prettyString());
-
-	return Json::object{
-		{"include", prettyPath.prettyString()},
-		{"includedBy", includeLocationArray},
-		{"canBeResolvedBy", resolveIncludeFolderArray},
-	};
-}
-
-Json::object includeResolverResultToJsonObj(const IncludeResolverResult& includeResolverResult)
-{
-	Json::array invalidPathArray;
-	for (const auto& invalidPath : includeResolverResult.invalidPathSet) invalidPathArray.push_back(invalidPath.string());
-
-	Json::array unresolvedIncludeArray;
-	for (const auto& unresolvedInclude : includeResolverResult.unresolvedIncludeSet)
-		unresolvedIncludeArray.push_back(unresolvedIncludeToJsonObj(unresolvedInclude));
-
-	Json::array conflictedIncludeArray;
-	for (const auto& conflictedInclude : includeResolverResult.conflictedIncludeMap)
-		conflictedIncludeArray.push_back(conflictedIncludeToJsonObj(conflictedInclude.first, conflictedInclude.second));
-
-	Json::array resolveIncludeFolderArray;
-	for (const auto& resolveIncludeFolder : includeResolverResult.resolveIncludeFolderSet)
-		resolveIncludeFolderArray.push_back(resolveIncludeFolder.prettyString());
-
-	return Json::object{{"invalidPaths", invalidPathArray},
-		{"unresolvedIncludes", unresolvedIncludeArray},
-		{"conflictedIncludes", conflictedIncludeArray},
-		{"resolveIncludeFolders", resolveIncludeFolderArray}};
 }
 
 int include_resolver_main(int argc, const char* argv[])
@@ -603,9 +566,7 @@ int include_resolver_main(int argc, const char* argv[])
 		return ret;
 	}();
 
-	Json::object jsonObj = includeResolverResultToJsonObj(result);
-
-	*os << Json(jsonObj).dump() << std::endl;
+	*os << result << std::endl;
 
 	return 0;
 }
